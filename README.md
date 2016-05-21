@@ -4,11 +4,11 @@ Distributed Private Filesystem
 Architecture
 ---------
 
-A filesystem is a unified view of one or multiple toplevel namespaces.
-A namespace has one or multiple copies. Each copy is called "replica" and can be saved over different storages.
-A storage interface supports low-level operations only like `get`, `put`, `delete` over blobs of data.
-A proxy exposes a storage interface for one or multiple namespaces.
-A client is in charge of organizing, encrypting and replicating the data.
+- A filesystem is a unified view of one or multiple toplevel namespaces.
+- A namespace has one or multiple copies. Each copy is called "replica" and can be saved over different storages.
+- A storage interface supports low-level operations only like `get`, `put`, `delete` over blobs of data.
+- A proxy exposes a storage interface for one or multiple namespaces.
+- A client is in charge of organizing, encrypting and replicating the data.
 
 Root of a namespace:
 ```
@@ -26,6 +26,10 @@ encrypted data -> { "type": "password", "description": ... } data
 hgkrhlrgha.dpn:
 { "enc": "..." }
 encrypted data -> { "type": "text/plain", ... } data
+
+iehghakenz.dpn:
+{ "enc": "..." }
+encrypted data -> { "type": "inode/directory", "nodes": { ... } }
 ```
 
 Configuration
