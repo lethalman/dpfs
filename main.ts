@@ -1,11 +1,9 @@
 "use strict";
 
 interface NPCrypto {
-	keyFromString(str: string): Promise<any>;
-
 	randomBytes(len: number);
-	
-	pbkdf2(baseKey, salt, iterations, hash): Promise<any>;
+	keyFromString(str: string): Promise<any>;
+	hkdf(baseKey, salt, info): Promise<any>;
 }
 
 class NPWebCrypto implements NPCrypto {
@@ -17,7 +15,7 @@ class NPWebCrypto implements NPCrypto {
 	}
 	
 	keyFromString(str) {
-		return crypto.subtle.importKey("raw", NPWebCrypto.str2ab(str), { name: "PBKDF2" }, false, [ "deriveKey" ]);
+		return crypto.subtle.importKey("raw", NPWebCrypto.str2ab(str), { name: "HKDF" }, false, [ "deriveKey" ]);
 	}
 
 	randomBytes(len) {
@@ -25,15 +23,16 @@ class NPWebCrypto implements NPCrypto {
 		window.crypto.getRandomValues(array);
 		return array;
 	}
-	
-	pbkdf2(baseKey, salt, iterations, hash) {
+
+	hkdf(baseKey, salt, info) {
 		return crypto.subtle.deriveKey(
-			{ name: "PBKDF2", salt: salt, iterations: iterations, hash: hash } as Algorithm,
+			{ name: "HKDF", salt: salt, info: NPWebCrypto.str2ab(info), hash: "SHA-256" } as Algorithm,
 			baseKey,
 			{ name: "AES-GCM", length: 256 } as Algorithm,
 			false,
-			[ "encrypt" ]);
+			[ "encrypt", "decrypt" ]);
 	}
+
 }
 
 var NPCryptoImpl: NPCrypto;
@@ -41,16 +40,55 @@ if (window && window.crypto) {
 	NPCryptoImpl = new NPWebCrypto(window.crypto);
 }
 
+type GenerateKey = () => Promise<CryptoKey>;
+
+interface NPEncKey {
+	toJSON(): any;
+}
+
+interface NPEnc {
+	generateKey(): Promise<NPEncKey>;
+}
+
+class NPEncV1Key implements NPEncKey {
+	constructor(public key: CryptoKey, public salt) {
+	}
+
+	toJSON() {
+		return { type: "NPEncV1", salt: this.salt };
+	}
+}
+
+class NPEncV1 implements NPEnc {
+	constructor(public crypto: NPCrypto, public baseKey: CryptoKey) {
+	}
+
+	async generateKey(): Promise<NPEncKey> {
+		var salt = this.crypto.randomBytes(64);
+		var key = await this.crypto.hkdf(this.baseKey, salt, "NPEncV1");
+		return new NPEncV1Key(key, salt);
+	};
+}
+
 class NP {
 	constructor(public crypto: NPCrypto) {
 	}
 
+	async createRoot(pw: string) {
+		var userKey = await this.crypto.keyFromString(pw);
+		var enc = new NPEncV1(this.crypto, userKey);
+		var folder = new NPFolder(enc);
+		return folder;
+	}
+
 	async test() {
-		console.log("asd");
-		var userKey = await this.crypto.keyFromString("asd");
-		var masterSalt = this.crypto.randomBytes(64);
-		var masterKey = await this.crypto.pbkdf2(userKey, masterSalt, 100, "SHA-1");
-		console.log(masterKey);
+		var folder = await this.createRoot("foo");
+		console.log(folder.enc);
+	}
+}
+
+class NPFolder {
+	constructor(public enc: NPEnc) {
 	}
 }
 
