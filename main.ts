@@ -24,6 +24,13 @@ interface NPEnc {
 	decrypt(data: ArrayBuffer, meta: any): Promise<ArrayBuffer>;
 }
 
+interface NPStorage {
+	getAll(name: string): Promise<any>;
+	get(name: string): Promise<any>;
+	put(name: string, data: any): Promise<any>;
+	del(name: string);
+}
+
 class NPEncV1 implements NPEnc {
 	baseKey: CryptoKey;
 	
@@ -43,7 +50,7 @@ class NPEncV1 implements NPEnc {
 			[ "encrypt" ]);
 		
 		var iv = npRandomBytes(16);
-		var res = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv, tagLength: 128 } as Algorithm,
+		var res = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv, length: 256, tagLength: 128 } as Algorithm,
 											  key, str2ab(data));
 		return { data: res, meta: { type: "NPEncV1", salt: salt, iv: iv } };
 	}
@@ -61,6 +68,35 @@ class NPEncV1 implements NPEnc {
 		
 		return res;
 	};
+}
+
+class NPStorageMemory implements NPStorage {
+	fs: any;
+	
+	constructor() {
+		this.fs = {};
+	}
+	
+	async getAll(name: string) {
+		if (this.fs[name]) {
+			return [this.fs[name]];
+		} else {
+			return [];
+		}
+	}
+	
+	async get(name: string) {
+		return null;
+	}
+
+	async put(name: string, data: any) {
+		
+	}
+
+	async del(name: string) {
+		
+	}
+	
 }
 
 class NP {
